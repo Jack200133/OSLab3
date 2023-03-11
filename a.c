@@ -31,10 +31,9 @@
 int sudoku[SIZE][SIZE];
 bool acepted;
 
-void check_rows()
+bool check_rows()
 {
     int i, j, k;
-    bool niceRows = true;
     for (i = 0; i < SIZE; i++)
     {
         int nums[SIZE] = {0};
@@ -44,14 +43,14 @@ void check_rows()
 
             if (nums[num - 1] == 1)
             {
-                printf("Error en fila %d\n", i);
-                pthread_exit(NULL);
+                // printf("Error en fila %d\n", i);
+                return false;
             }
             nums[num - 1] = 1;
         }
     }
     printf("Revisión de filas exitosa\n");
-    pthread_exit(NULL);
+    return true;
 }
 
 void *check_columns(void *arg)
@@ -60,18 +59,23 @@ void *check_columns(void *arg)
     for (i = 0; i < SIZE; i++)
     {
         int nums[SIZE] = {0};
+        int tID = syscall(SYS_gettid);
+        printf("Columna %d revisanda por el Thread %d\n", i, tID);
+
         for (j = 0; j < SIZE; j++)
         {
             int num = sudoku[j][i];
             if (nums[num - 1] == 1)
             {
-                printf("Error en columna %d\n", i);
+                // printf("Error en columna %d\n", i);
+                acepted = false;
                 pthread_exit(NULL);
             }
             nums[num - 1] = 1;
         }
     }
-    printf("Revisión de columnas exitosa\n");
+    // printf("Revisión de columnas exitosa\n");
+    acepted = true;
     pthread_exit(NULL);
 }
 
@@ -88,21 +92,19 @@ bool check_subgrid(void *arg)
             int num = sudoku[i][j];
             if (nums[num - 1] == 1)
             {
-                printf("Error en subarreglo (%d,%d)\n", row_start, col_start);
-                // pthread_exit(NULL);
+                // printf("Error en subarreglo (%d,%d)\n", row_start, col_start);
                 return false;
             }
             nums[num - 1] = 1;
         }
     }
     return true;
-    // pthread_exit(NULL);
 }
 
 int main(int argc, char *argv[])
 {
     // char *path = argv[1];
-    char *path = "sudoku2";
+    char *path = "sudoku";
     int sudoku_file = open(path, O_RDONLY);
     acepted = true;
     if (sudoku_file == -1)
@@ -126,6 +128,7 @@ int main(int argc, char *argv[])
         }
     }
     bool nicesubway;
+    bool niceRows;
     int i, j, k;
     // Revisar subarreglos de 3x3
     for (int i = 0; i < 9; i += 3)
@@ -148,17 +151,17 @@ int main(int argc, char *argv[])
     }
 
     pid_t pid = getpid();
-    print("PID: %d", pid);
+    printf("PID: %d\n", pid);
 
     pthread_t threadColumn;
     int f = fork();
-    char pidString[10];
-    sprintf(pidString, "%d", pid);
+    char pidS[10];
+    sprintf(pidS, "%d", pid);
 
     if (f == 0)
     {
-        printf("Estado de padre y threads. El padre tiene un id: %s\n", pidString);
-        execlp("ps", "ps", "-p", pidString, "-lLf", NULL);
+        printf("ID del PAPA: %s\n", pidS);
+        execlp("ps", "ps", "-p", pidS, "-lLf", NULL);
     }
     else
     {
@@ -167,9 +170,18 @@ int main(int argc, char *argv[])
             printf("Error al crear el thread");
             return 1;
         }
+
+        if (pthread_join(threadColumn, NULL) != 0)
+        {
+            printf("Error al unir el thread");
+            return 1;
+        }
+        wait(NULL);
+
+        niceRows = check_rows();
     }
 
-    if (!nicesubway)
+    if (!nicesubway && !niceRows && !acepted)
     {
         printf("Sudoku rechazado\n");
         exit(0);
