@@ -33,7 +33,13 @@ bool acepted;
 
 bool check_rows()
 {
-    int i, j, k;
+    int i, j;
+    bool response;
+    int nums[SIZE] = {0};
+    response = true;
+    omp_set_num_threads(9);
+    omp_set_nested(true);
+#pragma omp parallel for private(j, nums) schedule(dynamic)
     for (i = 0; i < SIZE; i++)
     {
         int nums[SIZE] = {0};
@@ -44,24 +50,28 @@ bool check_rows()
             if (nums[num - 1] == 1)
             {
                 // printf("Error en fila %d\n", i);
-                return false;
+                response = false;
             }
             nums[num - 1] = 1;
         }
     }
-    printf("Revisión de filas exitosa\n");
-    return true;
+    // printf("Revisión de filas exitosa\n");
+    return response;
 }
 
 void *check_columns(void *arg)
 {
-    int i, j, k;
+    int i, j;
+    omp_set_num_threads(9);
+    omp_set_nested(true);
+    int nums[SIZE] = {0};
+#pragma omp parallel for private(j, nums) schedule(dynamic)
     for (i = 0; i < SIZE; i++)
     {
         int nums[SIZE] = {0};
+
         int tID = syscall(SYS_gettid);
         printf("Columna %d revisanda por el Thread %d\n", i, tID);
-
         for (j = 0; j < SIZE; j++)
         {
             int num = sudoku[j][i];
@@ -85,6 +95,10 @@ bool check_subgrid(void *arg)
     int col_start = ((int *)arg)[1];
     int nums[SIZE] = {0};
     int i, j;
+    bool response = true;
+    omp_set_num_threads(3);
+    omp_set_nested(true);
+#pragma omp parallel for private(j, nums) schedule(dynamic)
     for (i = row_start; i < row_start + 3; i++)
     {
         for (j = col_start; j < col_start + 3; j++)
@@ -93,18 +107,18 @@ bool check_subgrid(void *arg)
             if (nums[num - 1] == 1)
             {
                 // printf("Error en subarreglo (%d,%d)\n", row_start, col_start);
-                return false;
+                response = false;
             }
             nums[num - 1] = 1;
         }
     }
-    return true;
+    return response;
 }
 
 int main(int argc, char *argv[])
 {
-    // char *path = argv[1];
-    char *path = "sudoku";
+    char *path = argv[1];
+    // char *path = "sudoku";
     int sudoku_file = open(path, O_RDONLY);
     acepted = true;
     if (sudoku_file == -1)
@@ -187,4 +201,16 @@ int main(int argc, char *argv[])
         exit(0);
     }
     printf("Sudoku aceptado\n");
+
+    if (fork() == 0)
+    {
+        printf("Antes de terminar el estado de este proceso y sus threads es:\n");
+        execlp("ps", "ps", "-p", pidS, "-lLf", NULL);
+    }
+    else
+    {
+        wait(NULL);
+    }
+
+    return 0;
 }
