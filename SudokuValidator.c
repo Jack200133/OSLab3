@@ -43,11 +43,12 @@ bool check_rows()
     // paralel para revisar las filas
     omp_set_num_threads(9);
     omp_set_nested(true);
-#pragma omp parallel for private(j, nums) schedule(dynamic)
+#pragma omp parallel for private(i, nums) schedule(dynamic)
     for (i = 0; i < SIZE; i++)
     {
         // Hace un reset de los numeros
         int nums[SIZE] = {0};
+#pragma omp parallel for private(j, nums)
         for (j = 0; j < SIZE; j++)
         {
             // Obtiene el numero de la fila
@@ -71,7 +72,7 @@ void *check_columns(void *arg)
     omp_set_num_threads(9);
     omp_set_nested(true);
     int nums[SIZE] = {0};
-#pragma omp parallel for private(j, nums) schedule(dynamic)
+#pragma omp parallel for private(i, nums) schedule(dynamic)
     for (i = 0; i < SIZE; i++)
     {
         // Hace un reset de los numeros
@@ -79,6 +80,7 @@ void *check_columns(void *arg)
         // Obtiene el ID del thread y lo muestra
         int tID = syscall(SYS_gettid);
         printf("Columna %d revisanda por el Thread %d\n", i, tID);
+#pragma omp parallel for private(j, nums)
         for (j = 0; j < SIZE; j++)
         {
             // Obtiene el numero de la columna
@@ -109,6 +111,9 @@ bool check_subgrid(void *arg)
 #pragma omp parallel for private(j, nums) schedule(dynamic)
     for (i = row_start; i < row_start + 3; i++)
     {
+        // Hace un reset de los numeros
+        int nums[SIZE] = {0};
+#pragma omp parallel for private(nums) schedule(dynamic)
         for (j = col_start; j < col_start + 3; j++)
         {
             // Obtiene el numero del subarreglo
